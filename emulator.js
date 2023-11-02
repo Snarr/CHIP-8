@@ -86,6 +86,10 @@ class CHIP8_Emulator {
 
 window.onload = function() {
   let fileInput = document.getElementById('fileInput');
+  let canvas = document.getElementById('canvas');
+  canvas.width = 640;
+  canvas.height = 320;
+  let ctx = canvas.getContext('2d');
 
   fileInput.addEventListener('change', function(e) {
     let file = fileInput.files[0];
@@ -99,11 +103,27 @@ window.onload = function() {
       emulator.loadProgram(reader.result);
 
       emulator.step();
+      emulator.step();
+      emulator.step();
+      emulator.step();
+      drawDisplayToCanvas(ctx, emulator.getDisplay());
 
     }
 
     reader.readAsArrayBuffer(file);
   });
+}
+
+function drawDisplayToCanvas(ctx, display) {
+  let cellSize = 10;
+
+  ctx.fillStyle = "black";
+  for (let y = 0; y < 32; y++) {
+    for (let x = 0; x < 64; x++) {
+      if (display[y][x] == 0) continue;
+      ctx.fillRect(x*cellSize, y*cellSize, cellSize, cellSize)
+    }
+  }
 }
 
 function getFirstByte(i) {

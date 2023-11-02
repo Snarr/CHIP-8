@@ -1,3 +1,5 @@
+let default_font = [0b11110000,0b10010000,0b10010000,0b10010000,0b11110000,0b00100000,0b01100000,0b00100000,0b00100000,0b01110000,0b11110000,0b00010000,0b11110000,0b10000000,0b11110000,0b11110000,0b00010000,0b11110000,0b00010000,0b11110000,0b10010000,0b10010000,0b11110000,0b00010000,0b00010000,0b11110000,0b10000000,0b11110000,0b00010000,0b11110000,0b11110000,0b10000000,0b11110000,0b10010000,0b11110000,0b11110000,0b00010000,0b00100000,0b01000000,0b01000000,0b11110000,0b10010000,0b11110000,0b10010000,0b11110000,0b11110000,0b10010000,0b11110000,0b00010000,0b11110000,0b11110000,0b10010000,0b11110000,0b10010000,0b10010000,0b11100000,0b10010000,0b11100000,0b10010000,0b11100000,0b11110000,0b10000000,0b10000000,0b10000000,0b11110000,0b11100000,0b10010000,0b10010000,0b10010000,0b11100000,0b11110000,0b10000000,0b11110000,0b10000000,0b11110000,0b11110000,0b10000000,0b11110000,0b10000000,0b10000000];
+
 class CHIP8_Emulator {
   constructor() {
     this.RAM = new Uint8Array(0x1000).fill(0x00);
@@ -7,6 +9,20 @@ class CHIP8_Emulator {
     this.DT = 0x0;
     this.ST = 0x0;
     this.vRegisters = new Uint8Array(16).fill(0x00);
+    this.DISPLAY = new Array(32)
+    for (let i = 0; i < 32; i++) {
+      this.DISPLAY[i] = new Array(64).fill(0);
+    }
+
+    this.loadFont();
+  }
+
+  loadFont() {
+    let font = default_font;
+
+    for (let i = 0; i < font.length; i++) {
+      this.RAM[i] = font[i];
+    }
   }
 
   loadProgram(buffer) {
@@ -16,13 +32,9 @@ class CHIP8_Emulator {
     }
   }
 
-  run() {
-    let opcode = (this.RAM[this.PC] << 8) | this.RAM[this.PC+1]
-    this.execOpcode(opcode);
-    this.execOpcode(opcode);
-    this.execOpcode(opcode);
-    this.execOpcode(opcode);
-    this.execOpcode(opcode);
+  step() {
+    this.execOpcode((this.RAM[this.PC] << 8) | this.RAM[this.PC+1])
+    this.PC += 0x2;
   }
 
   //0x0NNN
@@ -33,37 +45,61 @@ class CHIP8_Emulator {
 
   execOpcode(opcode) {
     if (opcode == 0x00E0) {
-      console.log("Clear screen");
+      for (let i = 0; i < 32; i++) {
+        this.DISPLAY[i] = new Array(64).fill(0);
+      }
     } else if (getFirstByte(opcode) == 0xA) {
       this.I = opcode & 0x0FFF;
     } else if (getFirstByte(opcode) == 0x6) {
       this.vRegisters[getX(opcode)] = getKK(opcode);
     } else if (getFirstByte(opcode) == 0xD) {
-      getX(opcode)
-      getY(opcode);
-      getNibble(opcode);
+      let startX = this.vRegisters[getX(opcode)];
+      console.log("Start X: " + startX);
+
+      let startY = this.vRegisters[getY(opcode)];
+      console.log("Start Y: " + startY);
+
+      let spriteHeight = getNibble(opcode);
+      console.log("Height: " + spriteHeight);
+
+      for (let y = 0; y < spriteHeight; y++) {
+        let currentY = startY+y;
+        for (let x = 0; x < 8; x++) {
+          let currentX = startX+x;
+          this.DISPLAY[currentY][currentX] = getNthBit(this.RAM[this.I+y], 7-x) ^ this.DISPLAY[currentY][currentX]
+        }
+      }
     } else if (getFirstByte(opcode) == 0x1) {
-      this.I = getNNN(opcode) - 0x200;
+      this.I = getNNN(opcode);
     } else {
       console.log("Invalid opcode", opcode)
+      return 0;
     }
+
+    return 1;
+  }
+
+  getDisplay() {
+    return this.DISPLAY;
   }
 }
 
 window.onload = function() {
-  var fileInput = document.getElementById('fileInput');
+  let fileInput = document.getElementById('fileInput');
 
   fileInput.addEventListener('change', function(e) {
-    var file = fileInput.files[0];
+    let file = fileInput.files[0];
 
-    var reader = new FileReader();
+    let reader = new FileReader();
 
     reader.onload = function(e) {
       // console.log(reader.result.data);
       let emulator = new CHIP8_Emulator()
+
       emulator.loadProgram(reader.result);
 
-      emulator.run();
+      emulator.step();
+
     }
 
     reader.readAsArrayBuffer(file);
@@ -92,4 +128,8 @@ function getNNN(i) {
 
 function getKK(i) {
   return (i & 0x00FF)
+}
+
+function getNthBit(x, n) {
+  return (x >> n) & 1
 }

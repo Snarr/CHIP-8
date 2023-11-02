@@ -33,8 +33,9 @@ class CHIP8_Emulator {
   }
 
   step() {
-    this.execOpcode((this.RAM[this.PC] << 8) | this.RAM[this.PC+1])
+    let status = this.execOpcode((this.RAM[this.PC] << 8) | this.RAM[this.PC+1])
     this.PC += 0x2;
+    return status;
   }
 
   //0x0NNN
@@ -64,8 +65,11 @@ class CHIP8_Emulator {
 
       for (let y = 0; y < spriteHeight; y++) {
         let currentY = startY+y;
+        if (currentY > 31) break;
+
         for (let x = 0; x < 8; x++) {
           let currentX = startX+x;
+          if (currentX > 63) break;
           this.DISPLAY[currentY][currentX] = getNthBit(this.RAM[this.I+y], 7-x) ^ this.DISPLAY[currentY][currentX]
         }
       }
@@ -102,11 +106,9 @@ window.onload = function() {
 
       emulator.loadProgram(reader.result);
 
-      emulator.step();
-      emulator.step();
-      emulator.step();
-      emulator.step();
-      drawDisplayToCanvas(ctx, emulator.getDisplay());
+      while (emulator.step() == 1) {
+        drawDisplayToCanvas(ctx, emulator.getDisplay());
+      } 
 
     }
 

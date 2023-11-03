@@ -2,7 +2,8 @@ let default_font = [0b11110000,0b10010000,0b10010000,0b10010000,0b11110000,0b001
 
 class CHIP8_Emulator {
   constructor() {
-    this.RAM = new Uint8Array(0x1000).fill(0x00);
+    this.RAM = new Uint8Array(4096).fill(0x00);
+    this.STACK = new Uint16Array(16).fill(0x00);
     this.PC = 0x0200; // Program counter
     this.SP = 0x00; // Stack pointer
     this.I = 0x0000;
@@ -58,11 +59,16 @@ class CHIP8_Emulator {
       }
     } else if (opcode == 0x00EE) { 
       // Return from a subroutine
+      this.PC = this.STACK[this.SP];
+      this.SP--;
     } else if (firstByte == 0x1) {
       // Jump to location nnn
       this.PC = getNNN(opcode);
     } else if (firstByte == 0x2) {
       // Call subroutine at nnn
+      this.SP++;
+      this.STACK[this.SP] = this.PC;
+      this.PC = getNNN(opcode);
     } else if (firstByte == 0x3) {
       // Skip next instruction if Vx == kk
       if (this.vRegisters[getX(opcode)] == getKK(opcode)) {

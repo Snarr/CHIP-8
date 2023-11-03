@@ -17,6 +17,10 @@ class CHIP8_Emulator {
     this.loadFont();
   }
 
+  getRandomUint8() {
+    return Math.floor(Math.random() * 256);
+  }
+
   loadFont() {
     let font = default_font;
 
@@ -45,23 +49,102 @@ class CHIP8_Emulator {
   //0X00KK
 
   execOpcode(opcode) {
+    let firstByte = getFirstByte(opcode);
+
     if (opcode == 0x00E0) {
       for (let i = 0; i < 32; i++) {
         this.DISPLAY[i] = new Array(64).fill(0);
       }
-    } else if (getFirstByte(opcode) == 0xA) {
-      this.I = opcode & 0x0FFF;
-    } else if (getFirstByte(opcode) == 0x6) {
+    } else if (opcode == 0x00EE) { 
+      // Return from a subroutine
+    }else if (firstByte == 0x1) {
+      // Jump to location nnn
+      this.PC = getNNN(opcode);
+    } else if (firstByte == 0x2) {
+      // Call subroutine at nnn
+    } else if (firstByte == 0x3) {
+      // Skip next instruction if Vx == kk
+      if (this.vRegisters[getX(opcode)] == getKK(opcode)) {
+        this.PC += 1;
+      }
+    } else if (firstByte == 0x4) {
+      // Skip next instruction if Vx != kk
+      if (this.vRegisters[getX(opcode)] != getKK(opcode)) {
+        this.PC += 1;
+      }
+    } else if (firstByte == 0x5) {
+      // Skip next instruction if Vx = Vy
+      if (this.vRegisters[getX(opcode)] == this.vRegisters[getY(opcode)]) {
+        this.PC += 1;
+      }
+    } else if (firstByte == 0x6) {
+      // Set Vx = kk
       this.vRegisters[getX(opcode)] = getKK(opcode);
-    } else if (getFirstByte(opcode) == 0xD) {
-      let startX = this.vRegisters[getX(opcode)];
-      console.log("Start X: " + startX);
-
-      let startY = this.vRegisters[getY(opcode)];
-      console.log("Start Y: " + startY);
-
+    } else if (firstByte == 0x7) {
+      // Set Vx = Vx + kk
+      this.vRegisters[getX(opcode)] += getKK(opcode);
+    } else if (firstByte == 0x8) {
+      let nibble = getNibble(opcode);
+      if (nibble == 0x0) {
+        // Set Vx = Vy
+        this.vRegisters[getX(opcode)] = this.vRegisters[getY(opcode)];
+      } else if (nibble == 0x1) {
+        // Set Vx = Vx OR Vy
+        this.vRegisters[getX(opcode)] |= this.vRegisters[getY(opcode)];
+      } else if (nibble == 0x2) {
+        // Set Vx = Vx AND Vy
+        this.vRegisters[getX(opcode)] &= this.vRegisters[getY(opcode)];
+      } else if (nibble == 0x3) {
+        // Set Vx = Vx XOR Vy
+        this.vRegisters[getX(opcode)] ^= this.vRegisters[getY(opcode)];
+      } else if (nibble == 0x4) {
+        // Set Vx = Vx + Vy, set VF = carry
+        let x = getX(opcode);
+        this.vRegisters[x] += this.vRegisters[getY(opcode)];
+        this.vRegisters[0xF] = (this.vRegisters[x] > 255) ? 1 : 0;
+        this.vRegisters[x] &= 0xFFFFFFFF
+      } else if (nibble == 0x5) {
+        // Set Vx = Vx - Vy, set VF = NOT borrow
+        let x = getX(opcode);
+        let y = getY(opcode);
+        this.vRegisters[0xF] = (this.vRegisters[x] > this.vRegisters[y]) ? 1 : 0;
+        this.vRegisters[x] -= this.vRegisters[y];
+      } else if (nibble == 0x6) {
+        let x = getX(opcode);
+        this.vRegisters[0xF] = (this.vRegisters[x] & 0x1) ? 1 : 0;
+        this.vRegisters[x] = this.vRegisters[x] >> 1;
+      } else if (nibble == 0x7) {
+        // Set Vx = Vy - Vx, set VF = NOT borrow
+        let x = getX(opcode);
+        let y = getY(opcode);
+        this.vRegisters[0xF] = (this.vRegisters[y] > this.vRegisters[x]) ? 1 : 0;
+        this.vRegisters[x] = this.vRegisters[y] - this.vRegisters[x];
+      } else if (nibble = 0xE) {
+        let x = getX(opcode);
+        this.vRegisters[0xF] = ((this.vRegisters[x] & 0x1) == 0x1) ? 1 : 0;
+        this.vRegisters[x] = this.vRegisters[x] << 1;
+      } else {
+        return 0;
+      }
+    } else if (firstByte == 0x9) {
+      // Skip next instruction if Vx != Vy
+      if (this.vRegisters[getX(opcode)] != this.vRegisters[getY(opcode)]) {
+        this.PC += 1;
+      }
+    } else if (firstByte == 0xA) {
+      // Set I = nnn
+      this.I = getNNN(opcode);
+    } else if (firstByte == 0xB) {
+      // Jump to location nnn + V0
+      this.PC = getNNN(opcode) + this.vRegisters[0];
+    } else if (firstByte == 0xC) {
+      // Set Vx = random byte AND kk.
+      this.vRegisters[getX(opcode)] = this.getRandomUint8() & getKK(opcode);
+    } else if (firstByte == 0xD) {
+      // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision
+      let startX = this.vRegisters[getX(opcode)] & 0b111111;
+      let startY = this.vRegisters[getY(opcode)] & 0b011111;
       let spriteHeight = getNibble(opcode);
-      console.log("Height: " + spriteHeight);
 
       for (let y = 0; y < spriteHeight; y++) {
         let currentY = startY+y;
@@ -70,11 +153,28 @@ class CHIP8_Emulator {
         for (let x = 0; x < 8; x++) {
           let currentX = startX+x;
           if (currentX > 63) break;
-          this.DISPLAY[currentY][currentX] = getNthBit(this.RAM[this.I+y], 7-x) ^ this.DISPLAY[currentY][currentX]
+
+          let pixelBefore = this.DISPLAY[currentY][currentX];
+          let pixelAfter = pixelBefore ^ getNthBit(this.RAM[this.I+y], 7-x);
+          this.DISPLAY[currentY][currentX] = pixelAfter;
+          
+          if (pixelBefore == 0x1 && pixelAfter == 0x0) {
+            this.vRegisters[0xF] = 0x1;
+          }
         }
       }
-    } else if (getFirstByte(opcode) == 0x1) {
-      this.I = getNNN(opcode);
+    } else if (firstByte == 0xE) {
+      let kk = getKK(opcode);
+      if (kk == 0x9E) {
+        // Skip next instruction if key with the value of Vx is pressed
+        
+      } else if (kk == 0xA1) {
+        // Skip next instruction if key with the value of Vx is not pressed.
+      } else {
+        return 0;
+      }
+    } else if (firstByte == 0xF) {
+
     } else {
       console.log("Invalid opcode", opcode)
       return 0;

@@ -117,6 +117,7 @@ class CHIP8_Emulator {
         this.vRegisters[0xF] = (this.vRegisters[x] > this.vRegisters[y]) ? 1 : 0;
         this.vRegisters[x] -= this.vRegisters[y];
       } else if (nibble == 0x6) {
+        // VF = Least significant bit of Vx, Set Vx = Vx SHR 1,
         let x = getX(opcode);
         this.vRegisters[0xF] = (this.vRegisters[x] & 0x1) ? 1 : 0;
         this.vRegisters[x] = this.vRegisters[x] >> 1;
@@ -127,8 +128,9 @@ class CHIP8_Emulator {
         this.vRegisters[0xF] = (this.vRegisters[y] > this.vRegisters[x]) ? 1 : 0;
         this.vRegisters[x] = this.vRegisters[y] - this.vRegisters[x];
       } else if (nibble = 0xE) {
+        // Set VF = Most significant bit of Vx, Set Vx = Vx SHL 1;
         let x = getX(opcode);
-        this.vRegisters[0xF] = ((this.vRegisters[x] & 0x1) == 0x1) ? 1 : 0;
+        this.vRegisters[0xF] = ((this.vRegisters[x] >> 7) == 0x1) ? 1 : 0;
         this.vRegisters[x] = this.vRegisters[x] << 1;
       } else {
         return 0;
@@ -153,11 +155,14 @@ class CHIP8_Emulator {
       let startY = this.vRegisters[getY(opcode)] & 0b011111;
       let spriteHeight = getNibble(opcode);
 
+      // Draw the sprite on the screen starting left to right, top to bottom.
       for (let y = 0; y < spriteHeight; y++) {
+        // Find current Y coordinate by adding Vy value and Loop Variable y
         let currentY = startY+y;
         if (currentY > 31) break;
 
         for (let x = 0; x < 8; x++) {
+          // Find current X coordinate by adding Vx value and Loop Variable x
           let currentX = startX+x;
           if (currentX > 63) break;
 

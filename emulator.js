@@ -52,16 +52,18 @@ export class CHIP8_Emulator {
 
   execOpcode(opcode) {
     let firstByte = getFirstByte(opcode);
-
-    if (opcode == 0x00E0) {
-      // Clear the display
-      for (let i = 0; i < 32; i++) {
-        this.DISPLAY[i] = new Array(64).fill(0);
+  
+    if (firstByte == 0x0) {
+      if (getKK(opcode) == 0xE0) {
+        // Clear the display
+        for (let i = 0; i < 32; i++) {
+          this.DISPLAY[i] = new Array(64).fill(0);
+        }
+      } else if (getKK(opcode) == 0xEE) { 
+        // Return from a subroutine
+        this.PC = this.STACK[this.SP];
+        this.SP--;
       }
-    } else if (opcode == 0x00EE) { 
-      // Return from a subroutine
-      this.PC = this.STACK[this.SP];
-      this.SP--;
     } else if (firstByte == 0x1) {
       // Jump to location nnn
       this.PC = getNNN(opcode);

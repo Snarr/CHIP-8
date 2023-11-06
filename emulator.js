@@ -1,6 +1,6 @@
 let default_font = [0b11110000,0b10010000,0b10010000,0b10010000,0b11110000,0b00100000,0b01100000,0b00100000,0b00100000,0b01110000,0b11110000,0b00010000,0b11110000,0b10000000,0b11110000,0b11110000,0b00010000,0b11110000,0b00010000,0b11110000,0b10010000,0b10010000,0b11110000,0b00010000,0b00010000,0b11110000,0b10000000,0b11110000,0b00010000,0b11110000,0b11110000,0b10000000,0b11110000,0b10010000,0b11110000,0b11110000,0b00010000,0b00100000,0b01000000,0b01000000,0b11110000,0b10010000,0b11110000,0b10010000,0b11110000,0b11110000,0b10010000,0b11110000,0b00010000,0b11110000,0b11110000,0b10010000,0b11110000,0b10010000,0b10010000,0b11100000,0b10010000,0b11100000,0b10010000,0b11100000,0b11110000,0b10000000,0b10000000,0b10000000,0b11110000,0b11100000,0b10010000,0b10010000,0b10010000,0b11100000,0b11110000,0b10000000,0b11110000,0b10000000,0b11110000,0b11110000,0b10000000,0b11110000,0b10000000,0b10000000];
 
-class CHIP8_Emulator {
+export class CHIP8_Emulator {
   constructor() {
     this.RAM = new Uint8Array(4096).fill(0x00);
     this.STACK = new Uint16Array(16).fill(0x00);
@@ -54,6 +54,7 @@ class CHIP8_Emulator {
     let firstByte = getFirstByte(opcode);
 
     if (opcode == 0x00E0) {
+      // Clear the display
       for (let i = 0; i < 32; i++) {
         this.DISPLAY[i] = new Array(64).fill(0);
       }
@@ -77,12 +78,12 @@ class CHIP8_Emulator {
     } else if (firstByte == 0x4) {
       // Skip next instruction if Vx != kk
       if (this.vRegisters[getX(opcode)] != getKK(opcode)) {
-        this.PC += 1;
+        this.PC += 2;
       }
     } else if (firstByte == 0x5) {
       // Skip next instruction if Vx = Vy
       if (this.vRegisters[getX(opcode)] == this.vRegisters[getY(opcode)]) {
-        this.PC += 1;
+        this.PC += 2;
       }
     } else if (firstByte == 0x6) {
       // Set Vx = kk
@@ -138,7 +139,7 @@ class CHIP8_Emulator {
     } else if (firstByte == 0x9) {
       // Skip next instruction if Vx != Vy
       if (this.vRegisters[getX(opcode)] != this.vRegisters[getY(opcode)]) {
-        this.PC += 1;
+        this.PC += 2;
       }
     } else if (firstByte == 0xA) {
       // Set I = nnn
@@ -186,7 +187,7 @@ class CHIP8_Emulator {
         return 0;
       }
     } else if (firstByte == 0xF) {
-
+      let nibble = getNibble(opcode);
     } else if (firstByte == 0x0) {
       // Jump to a machine code routine at nnn
       // Ignored by modern interpreters
@@ -200,46 +201,6 @@ class CHIP8_Emulator {
 
   getDisplay() {
     return this.DISPLAY;
-  }
-}
-
-window.onload = function() {
-  let fileInput = document.getElementById('fileInput');
-  let canvas = document.getElementById('canvas');
-  canvas.width = 640;
-  canvas.height = 320;
-  let ctx = canvas.getContext('2d');
-
-  fileInput.addEventListener('change', function(e) {
-    let file = fileInput.files[0];
-
-    let reader = new FileReader();
-
-    reader.onload = function(e) {
-      // console.log(reader.result.data);
-      let emulator = new CHIP8_Emulator()
-
-      emulator.loadProgram(reader.result);
-
-      while (emulator.step() == 1) {
-        drawDisplayToCanvas(ctx, emulator.getDisplay());
-      } 
-
-    }
-
-    reader.readAsArrayBuffer(file);
-  });
-}
-
-function drawDisplayToCanvas(ctx, display) {
-  let cellSize = 10;
-
-  ctx.fillStyle = "black";
-  for (let y = 0; y < 32; y++) {
-    for (let x = 0; x < 64; x++) {
-      if (display[y][x] == 0) continue;
-      ctx.fillRect(x*cellSize, y*cellSize, cellSize, cellSize)
-    }
   }
 }
 

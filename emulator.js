@@ -271,9 +271,10 @@ export class CHIP8_Emulator {
             this.vRegisters[getX(opcode)] = this.DT;
             break;
           }
+          
+          // TODO: implement 0xFX0A
           case 0x0A: {
             // Wait for a key press, store the value of the key in Vx
-            
             break;
           }
           case 0x15: {

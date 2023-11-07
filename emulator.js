@@ -10,6 +10,7 @@ export class CHIP8_Emulator {
     this.DT = 0x0; // Delay timer
     this.ST = 0x0; // Sound timer
     this.vRegisters = new Uint8Array(16).fill(0x00);
+    this.KEYMAP = new Array(16).fill(0x0);
 
     this.DISPLAY = new Array(32)
     for (let i = 0; i < 32; i++) {
@@ -42,6 +43,10 @@ export class CHIP8_Emulator {
   step() {
     this.execOpcode((this.RAM[this.PC] << 8) | this.RAM[this.PC+1])
     this.PC += 0x2;
+  }
+
+  setKey(key, state) {
+    this.KEYMAP[key] = state;
   }
 
   logError(opcode) {
@@ -80,8 +85,8 @@ export class CHIP8_Emulator {
         }
         break;
       case 0x1:
-        // Jump to location nnn
-        this.PC = getNNN(opcode);
+        // Jump to location nnn, subtract 0x2
+        this.PC = getNNN(opcode) - 0x2;
         break;
       case 0x2:
         // Call subroutine at nnn
@@ -153,7 +158,7 @@ export class CHIP8_Emulator {
           case 0x6: {
             // VF = Least significant bit of Vx, Set Vx = Vx SHR 1,
             let x = getX(opcode);
-            this.vRegisters[0xF] = (this.vRegisters[x] & 0x1) ? 1 : 0;
+            this.vRegisters[0xF] = this.vRegisters[x] & 0x1;
             this.vRegisters[x] = this.vRegisters[x] >> 1;
             break;
           }
@@ -168,7 +173,7 @@ export class CHIP8_Emulator {
           case 0xE:
             // Set VF = Most significant bit of Vx, Set Vx = Vx SHL 1;
             let x = getX(opcode);
-            this.vRegisters[0xF] = ((this.vRegisters[x] >> 7) == 0x1) ? 1 : 0;
+            this.vRegisters[0xF] = (this.vRegisters[x] >> 7) & 0x1
             this.vRegisters[x] = this.vRegisters[x] << 1;
             break;
           default:
@@ -229,10 +234,16 @@ export class CHIP8_Emulator {
         switch (kk) {
           case 0x9E: {
             // Skip next instruction if key with the value of Vx is pressed
+            if (this.KEYMAP[getX(opcode)] == 1) {
+              this.PC += 0x2;
+            }
             break;
           }
           case 0xA1: {
             // Skip next instruction if key with the value of Vx is not pressed.
+            if (this.KEYMAP[getX(opcode)] == 0) {
+              this.PC += 0x2;
+            }
             break;
           }
           default: {

@@ -3,13 +3,69 @@
   <head>
     <meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
     
+    <style>
+      body {
+        background-color: black;
+        height: 100vh;
+        margin: 0;
+        color: white;
+      }
+
+      .flex {
+        display: flex;
+      }
+
+      .col {
+        flex-direction: column;
+      }
+      .vh {
+        height: 100%;
+      }
+      .vw {
+        width: 100%;
+      }
+      .center {
+        justify-content: center;
+        align-items: center;
+      }
+      .gap {
+        gap: 1em;
+      }
+
+      #canvas {
+        width: 640px;
+        height: 320px;
+        border-style: solid;
+        border-color: rgb(85, 85, 85);
+      }
+
+      button {
+        width: 50px;
+        height: 50px;
+        border-radius: 25%;
+      }
+
+      #start {
+        background-color: #27ae60;
+      }
+      #stop {
+        background-color: #e74c3c;
+      }
+      #next {
+        background-color: #f39c12;
+      }
+    </style>
   </head>
   <body>
-    <input type="file" id="fileInput">
-    <button id="start"> Start </button>
-    <button id="stop"> Stop </button>
-    <button id="next"> >> </button>
-    <canvas id="canvas"></canvas>
+    <div class="flex col vh vw center gap">
+      <canvas id="canvas"></canvas>
+      <div id="controls">
+        <input type="file" id="fileInput">
+        <button id="start"> Start </button>
+        <button id="stop"> Stop </button>
+        <button id="next"> >> </button>
+      </div>
+    </div>
     <script type=module src=runtime.js>
 
     </script>

@@ -39,9 +39,12 @@ export class CHIP8_Emulator {
   }
 
   step() {
-    let status = this.execOpcode((this.RAM[this.PC] << 8) | this.RAM[this.PC+1])
+    this.execOpcode((this.RAM[this.PC] << 8) | this.RAM[this.PC+1])
     this.PC += 0x2;
-    return status;
+  }
+
+  logError(opcode) {
+    console.log(`Invalid opcode 0x${opcode.toString(16)}`)
   }
 
   //0x0NNN
@@ -53,184 +56,259 @@ export class CHIP8_Emulator {
   execOpcode(opcode) {
     let firstByte = getFirstByte(opcode);
   
-    if (firstByte == 0x0) {
-      if (getKK(opcode) == 0xE0) {
-        // Clear the display
-        for (let i = 0; i < 32; i++) {
-          this.DISPLAY[i] = new Array(64).fill(0);
+    switch (firstByte) {
+      case 0x0:
+        let kk = getKK(opcode);
+        switch (kk) {
+          case 0xE0:
+            // Clear the display
+            for (let i = 0; i < 32; i++) {
+              this.DISPLAY[i] = new Array(64).fill(0);
+            }
+            break;
+          case 0xEE:
+            // Return from a subroutine
+            this.PC = this.STACK[this.SP];
+            this.SP--;
+            break;
+          default:
+            this.logError(opcode);
+            break;
         }
-      } else if (getKK(opcode) == 0xEE) { 
-        // Return from a subroutine
-        this.PC = this.STACK[this.SP];
-        this.SP--;
-      }
-    } else if (firstByte == 0x1) {
-      // Jump to location nnn
-      this.PC = getNNN(opcode);
-    } else if (firstByte == 0x2) {
-      // Call subroutine at nnn
-      this.SP++;
-      this.STACK[this.SP] = this.PC;
-      this.PC = getNNN(opcode);
-    } else if (firstByte == 0x3) {
-      // Skip next instruction if Vx == kk
-      if (this.vRegisters[getX(opcode)] == getKK(opcode)) {
-        this.PC += 2;
-      }
-    } else if (firstByte == 0x4) {
-      // Skip next instruction if Vx != kk
-      if (this.vRegisters[getX(opcode)] != getKK(opcode)) {
-        this.PC += 2;
-      }
-    } else if (firstByte == 0x5) {
-      // Skip next instruction if Vx = Vy
-      if (this.vRegisters[getX(opcode)] == this.vRegisters[getY(opcode)]) {
-        this.PC += 2;
-      }
-    } else if (firstByte == 0x6) {
-      // Set Vx = kk
-      this.vRegisters[getX(opcode)] = getKK(opcode);
-    } else if (firstByte == 0x7) {
-      // Set Vx = Vx + kk
-      this.vRegisters[getX(opcode)] += getKK(opcode);
-    } else if (firstByte == 0x8) {
-      let nibble = getNibble(opcode);
-      if (nibble == 0x0) {
-        // Set Vx = Vy
-        this.vRegisters[getX(opcode)] = this.vRegisters[getY(opcode)];
-      } else if (nibble == 0x1) {
-        // Set Vx = Vx OR Vy
-        this.vRegisters[getX(opcode)] |= this.vRegisters[getY(opcode)];
-      } else if (nibble == 0x2) {
-        // Set Vx = Vx AND Vy
-        this.vRegisters[getX(opcode)] &= this.vRegisters[getY(opcode)];
-      } else if (nibble == 0x3) {
-        // Set Vx = Vx XOR Vy
-        this.vRegisters[getX(opcode)] ^= this.vRegisters[getY(opcode)];
-      } else if (nibble == 0x4) {
-        // Set Vx = Vx + Vy, set VF = carry
-        let x = getX(opcode);
-        this.vRegisters[x] += this.vRegisters[getY(opcode)];
-        this.vRegisters[0xF] = (this.vRegisters[x] > 255) ? 1 : 0;
-        this.vRegisters[x] &= 0xFFFFFFFF
-      } else if (nibble == 0x5) {
-        // Set Vx = Vx - Vy, set VF = NOT borrow
-        let x = getX(opcode);
-        let y = getY(opcode);
-        this.vRegisters[0xF] = (this.vRegisters[x] > this.vRegisters[y]) ? 1 : 0;
-        this.vRegisters[x] -= this.vRegisters[y];
-      } else if (nibble == 0x6) {
-        // VF = Least significant bit of Vx, Set Vx = Vx SHR 1,
-        let x = getX(opcode);
-        this.vRegisters[0xF] = (this.vRegisters[x] & 0x1) ? 1 : 0;
-        this.vRegisters[x] = this.vRegisters[x] >> 1;
-      } else if (nibble == 0x7) {
-        // Set Vx = Vy - Vx, set VF = NOT borrow
-        let x = getX(opcode);
-        let y = getY(opcode);
-        this.vRegisters[0xF] = (this.vRegisters[y] > this.vRegisters[x]) ? 1 : 0;
-        this.vRegisters[x] = this.vRegisters[y] - this.vRegisters[x];
-      } else if (nibble = 0xE) {
-        // Set VF = Most significant bit of Vx, Set Vx = Vx SHL 1;
-        let x = getX(opcode);
-        this.vRegisters[0xF] = ((this.vRegisters[x] >> 7) == 0x1) ? 1 : 0;
-        this.vRegisters[x] = this.vRegisters[x] << 1;
-      } else {
-        return 0;
-      }
-    } else if (firstByte == 0x9) {
-      // Skip next instruction if Vx != Vy
-      if (this.vRegisters[getX(opcode)] != this.vRegisters[getY(opcode)]) {
-        this.PC += 2;
-      }
-    } else if (firstByte == 0xA) {
-      // Set I = nnn
-      this.I = getNNN(opcode);
-    } else if (firstByte == 0xB) {
-      // Jump to location nnn + V0
-      this.PC = getNNN(opcode) + this.vRegisters[0];
-    } else if (firstByte == 0xC) {
-      // Set Vx = random byte AND kk.
-      this.vRegisters[getX(opcode)] = this.getRandomUint8() & getKK(opcode);
-    } else if (firstByte == 0xD) {
-      // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision
-      let startX = this.vRegisters[getX(opcode)] & 0b111111;
-      let startY = this.vRegisters[getY(opcode)] & 0b011111;
-      let spriteHeight = getNibble(opcode);
+        break;
+      case 0x1:
+        // Jump to location nnn
+        this.PC = getNNN(opcode);
+        break;
+      case 0x2:
+        // Call subroutine at nnn
+        this.SP++;
+        this.STACK[this.SP] = this.PC;
+        this.PC = getNNN(opcode);
+        break;
+      case 0x3:
+        // Skip next instruction if Vx == kk
+        if (this.vRegisters[getX(opcode)] == getKK(opcode)) {
+          this.PC += 2;
+        }
+        break;
+      case 0x4:
+        // Skip next instruction if Vx != kk
+        if (this.vRegisters[getX(opcode)] != getKK(opcode)) {
+          this.PC += 2;
+        }
+        break;
+      case 0x5:
+        // Skip next instruction if Vx = Vy
+        if (this.vRegisters[getX(opcode)] == this.vRegisters[getY(opcode)]) {
+          this.PC += 2;
+        }
+        break;
+      case 0x6:
+        // Set Vx = kk
+        this.vRegisters[getX(opcode)] = getKK(opcode);
+        break;
+      case 0x7:
+        // Set Vx = Vx + kk
+        this.vRegisters[getX(opcode)] += getKK(opcode);
+        break;
+      case 0x8:
+        let nibble = getNibble(opcode);
+        switch (nibble) {
+          case 0x0:
+            // Set Vx = Vy
+            this.vRegisters[getX(opcode)] = this.vRegisters[getY(opcode)];
+            break;
+          case 0x1:
+            // Set Vx = Vx OR Vy
+            this.vRegisters[getX(opcode)] |= this.vRegisters[getY(opcode)];
+            break;
+          case 0x2:
+            // Set Vx = Vx AND Vy
+            this.vRegisters[getX(opcode)] &= this.vRegisters[getY(opcode)];
+            break;
+          case 0x3:
+            // Set Vx = Vx XOR Vy
+            this.vRegisters[getX(opcode)] ^= this.vRegisters[getY(opcode)];
+            break;
+          case 0x4: {
+            // Set Vx = Vx + Vy, set VF = carry
+            let x = getX(opcode);
+            this.vRegisters[x] += this.vRegisters[getY(opcode)];
+            this.vRegisters[0xF] = (this.vRegisters[x] > 255) ? 1 : 0;
+            this.vRegisters[x] &= 0xFFFFFFFF 
+            break;
+          }
+          case 0x5: {
+            // Set Vx = Vx - Vy, set VF = NOT borrow
+            let x = getX(opcode);
+            let y = getY(opcode);
+            this.vRegisters[0xF] = (this.vRegisters[x] > this.vRegisters[y]) ? 1 : 0;
+            this.vRegisters[x] -= this.vRegisters[y];
+            break;
+          }
+          case 0x6: {
+            // VF = Least significant bit of Vx, Set Vx = Vx SHR 1,
+            let x = getX(opcode);
+            this.vRegisters[0xF] = (this.vRegisters[x] & 0x1) ? 1 : 0;
+            this.vRegisters[x] = this.vRegisters[x] >> 1;
+            break;
+          }
+          case 0x7: {
+            // Set Vx = Vy - Vx, set VF = NOT borrow
+            let x = getX(opcode);
+            let y = getY(opcode);
+            this.vRegisters[0xF] = (this.vRegisters[y] > this.vRegisters[x]) ? 1 : 0;
+            this.vRegisters[x] = this.vRegisters[y] - this.vRegisters[x];
+            break;
+          }
+          case 0xE:
+            // Set VF = Most significant bit of Vx, Set Vx = Vx SHL 1;
+            let x = getX(opcode);
+            this.vRegisters[0xF] = ((this.vRegisters[x] >> 7) == 0x1) ? 1 : 0;
+            this.vRegisters[x] = this.vRegisters[x] << 1;
+            break;
+          default:
+            this.logError(opcode);
+        }
+        break;
+      case 0x9:
+        // Skip next instruction if Vx != Vy
+        if (this.vRegisters[getX(opcode)] != this.vRegisters[getY(opcode)]) {
+          this.PC += 2;
+        }
+        break;
+      case 0xA:
+        // Set I = nnn
+        this.I = getNNN(opcode);
+        break;
+      case 0xB:
+        // Jump to location nnn + V0
+        this.PC = getNNN(opcode) + this.vRegisters[0];
+        break;
+      case 0xC:
+        // Set Vx = random byte AND kk.
+        this.vRegisters[getX(opcode)] = this.getRandomUint8() & getKK(opcode);
+        break;
+      case 0xD: {
+        // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision
+        let startX = this.vRegisters[getX(opcode)] & 0b111111;
+        let startY = this.vRegisters[getY(opcode)] & 0b011111;
+        let spriteHeight = getNibble(opcode);
 
-      // Draw the sprite on the screen starting left to right, top to bottom.
-      for (let y = 0; y < spriteHeight; y++) {
-        // Find current Y coordinate by adding Vy value and Loop Variable y
-        let currentY = startY+y;
-        if (currentY > 31) break;
-
-        for (let x = 0; x < 8; x++) {
-          // Find current X coordinate by adding Vx value and Loop Variable x
-          let currentX = startX+x;
-          if (currentX > 63) break;
-
-          let pixelBefore = this.DISPLAY[currentY][currentX];
-          let pixelAfter = pixelBefore ^ getNthBit(this.RAM[this.I+y], 7-x);
-          this.DISPLAY[currentY][currentX] = pixelAfter;
-          
-          if (pixelBefore == 0x1 && pixelAfter == 0x0) {
-            this.vRegisters[0xF] = 0x1;
+        this.vRegisters[0xF] = 0;
+  
+        // Draw the sprite on the screen starting left to right, top to bottom.
+        for (let y = 0; y < spriteHeight; y++) {
+          // Find current Y coordinate by adding Vy value and Loop Variable y
+          let currentY = startY+y;
+          if (currentY > 31) break;
+  
+          for (let x = 0; x < 8; x++) {
+            // Find current X coordinate by adding Vx value and Loop Variable x
+            let currentX = startX+x;
+            if (currentX > 63) break;
+  
+            let pixelBefore = this.DISPLAY[currentY][currentX];
+            let pixelAfter = pixelBefore ^ getNthBit(this.RAM[this.I+y], 7-x);
+            this.DISPLAY[currentY][currentX] = pixelAfter;
+            
+            if (pixelBefore == 0x1 && pixelAfter == 0x0) {
+              this.vRegisters[0xF] = 0x1;
+            }
           }
         }
+        break;
       }
-    } else if (firstByte == 0xE) {
-      let kk = getKK(opcode);
-      if (kk == 0x9E) {
-        // Skip next instruction if key with the value of Vx is pressed
+      case 0xE: {
+        let kk = getKK(opcode);
 
-      } else if (kk == 0xA1) {
-        // Skip next instruction if key with the value of Vx is not pressed.
-      } else {
-        return 0;
-      }
-    } else if (firstByte == 0xF) {
-      let kk = getKK(opcode);
-      if (kk == 0x07) {
-      } else if (kk == 0x0A) {
-        // Wait for a key press, store the value of the key in Vx
-      } else if (kk == 0x15) {
-        // Set delay timer = Vx
-        this.DT = this.vRegisters[getX(opcode)];
-      } else if (kk == 0x18) {
-        // Set sound timer = Vx
-        this.ST = this.vRegisters[getX(opcode)];
-      } else if (kk == 0x1E) {
-        // Set I = I + Vx
-        this.I += this.vRegisters[getX(opcode)];
-      } else if (kk == 0x29) {
-        // Set I = location of sprite for digit Vx
-      } else if (kk == 0x33) {
-        // Store BCD representation of Vx in memory locations I, I+1, and I+2
-        let x = getX(opcode);
-
-        this.RAM[this.I] = Math.floor(x/100);
-        this.RAM[this.I + 1] = Math.floor((x/10) % 10); 
-        this.RAM[this.I + 2] = Math.floor(x % 10);
-
-      } else if (kk == 0x55) {
-        // Store registers V0 through Vx in memory starting at location I
-        let x = getX(opcode);
-        for (let i = 0; i < x; i++) {
-          this.RAM[this.I + i] = this.vRegisters[i]; 
+        switch (kk) {
+          case 0x9E: {
+            // Skip next instruction if key with the value of Vx is pressed
+            break;
+          }
+          case 0xA1: {
+            // Skip next instruction if key with the value of Vx is not pressed.
+            break;
+          }
+          default: {
+            this.logError(opcode);
+            break;
+          }
         }
-      } else if (kk == 0x65) {
-        // Read registers V0 through Vx from memory starting at location I
-        let x = getX(opcode);
-        for (let i = 0; i < x; i++) {
-          this.vRegisters[i] = this.RAM[this.I+i];
-        } 
+        break;
       }
-    } else {
-      console.log("Invalid opcode", opcode)
-      return 0;
-    }
+      case 0xF: {
+        let kk = getKK(opcode);
 
-    return 1;
+        switch (kk) {
+          case 0x07: {
+            // Set Vx = delay timer value
+            this.vRegisters[getX(opcode)] = this.DT;
+            break;
+          }
+          case 0x0A: {
+            // Wait for a key press, store the value of the key in Vx
+            break;
+          }
+          case 0x15: {
+            // Set delay timer = Vx
+            this.DT = this.vRegisters[getX(opcode)];
+            break;
+          }
+          case 0x18: {
+            // Set sound timer = Vx
+            this.ST = this.vRegisters[getX(opcode)];
+            break;
+          }
+          case 0x1E: {
+            // Set I = I + Vx
+            this.I += this.vRegisters[getX(opcode)];
+            break;
+          }
+          case 0x29: {
+            // Set I = location of sprite for digit Vx
+            this.I = this.vRegisters[getX(opcode)] * 5;
+            break;
+          }
+          case 0x33: {
+            // Store BCD representation of Vx in memory locations I, I+1, and I+2
+            let x = getX(opcode);
+            let Vx = this.vRegisters[x];
+  
+            this.RAM[this.I] = Math.floor(x/100);
+            this.RAM[this.I + 1] = Math.floor((x/10) % 10); 
+            this.RAM[this.I + 2] = Math.floor(x % 10);
+            break;
+          }
+          case 0x55: {
+            // Store registers V0 through Vx in memory starting at location I
+            let x = getX(opcode);
+            for (let i = 0; i <= x; i++) {
+              this.RAM[this.I + i] = this.vRegisters[i]; 
+            }
+            break;
+          }
+          case 0x65: {
+            // Read registers V0 through Vx from memory starting at location I
+            let x = getX(opcode);
+            for (let i = 0; i <= x; i++) {
+              this.vRegisters[i] = this.RAM[this.I+i];
+            } 
+            break;
+          }
+          default: {
+            this.logError(opcode);
+            break;
+          }
+          
+        }
+        break;
+      }
+      default:
+        this.logError(opcode);
+    }
   }
 
   getDisplay() {

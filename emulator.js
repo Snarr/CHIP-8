@@ -36,6 +36,7 @@ export class CHIP8_Emulator {
     for (let i = 0; i < instructions.byteLength; i += 1) {
       this.RAM[i+0x0200] = instructions.getUint8(i);
     }
+    console.log("Program loaded...")
   }
 
   step() {
@@ -54,6 +55,8 @@ export class CHIP8_Emulator {
   //0X00KK
 
   execOpcode(opcode) {
+    console.log(`0x${opcode.toString(16)}`)
+    
     let firstByte = getFirstByte(opcode);
   
     switch (firstByte) {

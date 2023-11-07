@@ -94,7 +94,9 @@ function start() {
         // draw stuff here
         emulator.step()
         drawDisplayToCanvas(ctx, emulator.getDisplay());
-  
+    }
+    if (elapsed > 1000/60) {
+      emulator.decrementTimers();
     }
   }
   

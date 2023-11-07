@@ -53,6 +53,15 @@ export class CHIP8_Emulator {
     console.log(`Invalid opcode 0x${opcode.toString(16)}`)
   }
 
+  decrementTimers() {
+    if (this.DT > 0) {
+      this.DT--;
+    }
+    if (this.ST > 0) {
+      this.ST--;
+    }
+  }
+
   //0x0NNN
   //0x0X00
   //0x00Y0
@@ -264,6 +273,7 @@ export class CHIP8_Emulator {
           }
           case 0x0A: {
             // Wait for a key press, store the value of the key in Vx
+            
             break;
           }
           case 0x15: {

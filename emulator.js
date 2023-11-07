@@ -75,7 +75,7 @@ export class CHIP8_Emulator {
     } else if (firstByte == 0x3) {
       // Skip next instruction if Vx == kk
       if (this.vRegisters[getX(opcode)] == getKK(opcode)) {
-        this.PC += 1;
+        this.PC += 2;
       }
     } else if (firstByte == 0x4) {
       // Skip next instruction if Vx != kk
@@ -189,10 +189,42 @@ export class CHIP8_Emulator {
         return 0;
       }
     } else if (firstByte == 0xF) {
-      let nibble = getNibble(opcode);
-    } else if (firstByte == 0x0) {
-      // Jump to a machine code routine at nnn
-      // Ignored by modern interpreters
+      let kk = getKK(opcode);
+      if (kk == 0x07) {
+      } else if (kk == 0x0A) {
+        // Wait for a key press, store the value of the key in Vx
+      } else if (kk == 0x15) {
+        // Set delay timer = Vx
+        this.DT = this.vRegisters[getX(opcode)];
+      } else if (kk == 0x18) {
+        // Set sound timer = Vx
+        this.ST = this.vRegisters[getX(opcode)];
+      } else if (kk == 0x1E) {
+        // Set I = I + Vx
+        this.I += this.vRegisters[getX(opcode)];
+      } else if (kk == 0x29) {
+        // Set I = location of sprite for digit Vx
+      } else if (kk == 0x33) {
+        // Store BCD representation of Vx in memory locations I, I+1, and I+2
+        let x = getX(opcode);
+
+        this.RAM[this.I] = Math.floor(x/100);
+        this.RAM[this.I + 1] = Math.floor((x/10) % 10); 
+        this.RAM[this.I + 2] = Math.floor(x % 10);
+
+      } else if (kk == 0x55) {
+        // Store registers V0 through Vx in memory starting at location I
+        let x = getX(opcode);
+        for (let i = 0; i < x; i++) {
+          this.RAM[this.I + i] = this.vRegisters[i]; 
+        }
+      } else if (kk == 0x65) {
+        // Read registers V0 through Vx from memory starting at location I
+        let x = getX(opcode);
+        for (let i = 0; i < x; i++) {
+          this.vRegisters[i] = this.RAM[this.I+i];
+        } 
+      }
     } else {
       console.log("Invalid opcode", opcode)
       return 0;

@@ -89,10 +89,10 @@ export class CHIP8_Emulator {
         this.PC = getNNN(opcode) - 0x2;
         break;
       case 0x2:
-        // Call subroutine at nnn
+        // Call subroutine at nnn, subtract 0x2
         this.SP++;
         this.STACK[this.SP] = this.PC;
-        this.PC = getNNN(opcode);
+        this.PC = getNNN(opcode) - 0x2;
         break;
       case 0x3:
         // Skip next instruction if Vx == kk
@@ -291,9 +291,9 @@ export class CHIP8_Emulator {
             let x = getX(opcode);
             let Vx = this.vRegisters[x];
   
-            this.RAM[this.I] = Math.floor(x/100);
-            this.RAM[this.I + 1] = Math.floor((x/10) % 10); 
-            this.RAM[this.I + 2] = Math.floor(x % 10);
+            this.RAM[this.I] = Math.floor(Vx/100);
+            this.RAM[this.I + 1] = Math.floor((Vx/10) % 10); 
+            this.RAM[this.I + 2] = Math.floor(Vx % 10);
             break;
           }
           case 0x55: {
